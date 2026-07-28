@@ -444,33 +444,38 @@ function useCrewEngine(
       const caches = cacheRef.current;
       if (!scenes || !texts) return;
 
-      // Active-scene windowing: only update current ± 1. All other scenes are
-      // frozen at their last-written values (always opacity 0 when they left
-      // the window, so they stay invisible). This covers every scene whose
-      // depthOpacity is > 0, so visuals are identical.
-      const current = Math.round((offset - START_Z) / SPACING);
-      const lo = Math.max(0, current - 1);
-      const hi = Math.min(COUNT - 1, current + 1);
+      // Stable activation via hysteresis on depthOpacity.
+      //
+      // Previous Math.round() approach flipped active/inactive rapidly
+      // when the camera eased back and forth across a scene-center
+      // boundary. depthOpacity is a continuous function of camera offset,
+      // so using it as the activation signal is inherently stable: scenes
+      // smoothly fade in before they become active and fade out before
+      // they deactivate, with no discrete boundary to oscillate on.
+      //
+      // Hysteresis margins (ACTIVATE < DEACTIVATE) add a dead band so even
+      // sub-pixel camera jitter at the exact fade edge cannot toggle a
+      // scene's active state.
+      const ACTIVATE_OP = 0.01;
+      const DEACTIVATE_OP = 0.001;
 
-      // Mark inactive scenes so CSS animations and glitch timers freeze.
       for (let i = 0; i < scenes.length; i++) {
         const scene = scenes[i];
         if (!scene) continue;
-        const shouldBeActive = i >= lo && i <= hi;
-        const isActive = !scene.classList.contains('crew-scene-inactive');
-        if (shouldBeActive && !isActive) scene.classList.remove('crew-scene-inactive');
-        if (!shouldBeActive && isActive) scene.classList.add('crew-scene-inactive');
-      }
-
-      for (let i = lo; i <= hi; i++) {
-        const scene = scenes[i];
-        if (!scene) continue;
-
-        let cache = caches[i];
-        if (!cache) { cache = makeCache(); caches[i] = cache; }
 
         const z = -START_Z - i * SPACING + offset;
         const op = depthOpacity(z);
+
+        const isActive = !scene.classList.contains('crew-scene-inactive');
+        const shouldBeActive = isActive ? op > DEACTIVATE_OP : op > ACTIVATE_OP;
+
+        if (shouldBeActive && !isActive) scene.classList.remove('crew-scene-inactive');
+        if (!shouldBeActive && isActive) scene.classList.add('crew-scene-inactive');
+
+        if (!shouldBeActive) continue;
+
+        let cache = caches[i];
+        if (!cache) { cache = makeCache(); caches[i] = cache; }
 
         // Cached transform + opacity — only write when the value actually
         // changes. No layout recalculation, just style mutation.
@@ -516,6 +521,18 @@ export default function CrewDatabase() {
   const sceneRefs = useRef<(HTMLDivElement | null)[]>([]);
   const textRefs = useRef<(HTMLElement | null)[][]>([]);
   const refsPool = useRef<SceneRefs[]>([]);
+
+  // Preload and decode all 7 crew portraits on mount so their textures
+  // are resident in the browser's decoded-image cache before the user can
+  // scroll. This eliminates decode / texture-upload stalls during reverse
+  // scrolling — the DOM <img> elements pick up the already-decoded image.
+  useEffect(() => {
+    CREW.forEach((m) => {
+      const img = new Image();
+      img.src = m.img;
+      img.decode().catch(() => {});
+    });
+  }, []);
 
   useCrewEngine(sectionRef, sceneRefs, textRefs);
   useCrewBoot(sectionRef);
@@ -607,9 +624,10 @@ export default function CrewDatabase() {
 function CrewFXStyles() {
   return (
     <style>{`
-/* ── Scene visibility — inactive scenes skip paint + free GPU layers ── */
+/* ── Scene GPU layers — kept resident on ALL scenes so reverse scroll
+   never triggers texture re-upload. Inactive scenes only pause
+   animations (rules below), they are never hidden or unpainted. ── */
 .crew-scene { will-change: transform, opacity; }
-.crew-scene-inactive { will-change: auto; visibility: hidden; }
 
 /* ── The only infinite animations kept ── */
 @keyframes crewLedPulse {
@@ -807,7 +825,8 @@ const CyberFrame = memo(function CyberFrame({ member, index }: { member: CrewMem
               src={member.img}
               alt={member.name}
               className="h-full w-full object-cover object-top"
-              loading="lazy"
+              loading="eager"
+              decoding="async"
             />
             {/* Color grade + diagonal holographic sheen (merged static overlay) */}
             <div className="pointer-events-none absolute inset-0" style={COLOR_GRADE_STYLE} />
