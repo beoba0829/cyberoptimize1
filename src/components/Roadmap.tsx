@@ -70,7 +70,7 @@ const PHASES: Phase[] = [
     icon: Globe,
     colorKey: 'yellow',
     hex: '#FFE600',
-    image: 'https://ik.imagekit.io/zznoau6lx/d.jpg',
+    image: 'https://ik.imagekit.io/zznoau6lx/Cybercoin%20webp/psycho.webp',
     points: [
       'CyberDAO governance launch',
       'Cross-chain bridge to the metaverse',
