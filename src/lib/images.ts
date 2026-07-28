@@ -38,7 +38,7 @@ export const IMAGES = {
     kiwi: 'https://ik.imagekit.io/zznoau6lx/fd4f1562a41cf38f05527f8e62d63fde.webp',
     dorio: 'https://ik.imagekit.io/zznoau6lx/5ea2fd030cf5b1673fe02b9ab11af75f.webp',
     pilar: 'https://ik.imagekit.io/zznoau6lx/cosplaying-as-pilar-v0-og7cwrxlec1e1.webp',
-    david: 'https://ik.imagekit.io/zznoau6lx/291ba69a5fb3d4ea78744d1b5196dff5.webp',
+    david: 'https://ik.imagekit.io/zznoau6lx/Cybercoin%20webp/david2.webp',
     lucy: 'https://ik.imagekit.io/zznoau6lx/will-lucy-appear-cyberpunk-edgerunners-2-v0-q6krc34tz9bf1.webp',
   },
 
