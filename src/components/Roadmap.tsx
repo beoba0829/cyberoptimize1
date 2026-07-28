@@ -40,7 +40,7 @@ const PHASES: Phase[] = [
     icon: Skull,
     colorKey: 'cyan',
     hex: '#00F0FF',
-    image: 'https://ik.imagekit.io/zznoau6lx/b.jpg',
+    image: 'https://ik.imagekit.io/zznoau6lx/Cybercoin%20webp/davidNlucy.webp',
     points: [
       'CoinGecko + CMC listings',
       'Meme bounty board goes live',
