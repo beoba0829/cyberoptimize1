@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import type { CSSProperties } from 'react';
 import { useCameraScroll } from '@/lib/cameraController';
 import { useCrewBoot } from '@/lib/useCrewBoot';
@@ -72,6 +72,99 @@ function makeCache(): SceneCache {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   MODULE-LEVEL STATIC STYLES
+   Hoisted out of render so they are created once, never reallocated.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const SCENE_BASE_STYLE: CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  transformStyle: 'preserve-3d',
+  opacity: 0,
+  pointerEvents: 'none',
+};
+
+const CREW_CARD_STYLE: CSSProperties = {
+  width: '100%',
+  aspectRatio: '3 / 4',
+  position: 'relative',
+  flexShrink: 0,
+};
+
+const OUTER_SHELL_STYLE: CSSProperties = {
+  background:
+    'linear-gradient(145deg, #23262b 0%, #0a0b0d 38%, #15171b 62%, #050608 100%)',
+  boxShadow:
+    'inset 0 0 0 1px rgba(0,240,255,0.18), inset 0 0 0 2px rgba(0,0,0,0.7), inset 0 2px 6px rgba(255,255,255,0.06), inset 0 -3px 10px rgba(0,0,0,0.9), 0 0 0 1px #000, 0 22px 50px rgba(0,0,0,0.85), 0 0 40px rgba(0,240,255,0.12)',
+  clipPath:
+    'polygon(0 14px, 14px 0, calc(100% - 28px) 0, 100% 28px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 28px 100%, 0 calc(100% - 28px))',
+};
+
+const MID_PLATE_STYLE: CSSProperties = {
+  inset: '8px',
+  background: 'linear-gradient(150deg, #14161a, #070809)',
+  boxShadow:
+    'inset 0 0 0 1px rgba(255,255,255,0.05), inset 0 0 0 2px rgba(0,0,0,0.6), inset 0 0 22px rgba(0,0,0,0.85)',
+  clipPath:
+    'polygon(0 10px, 10px 0, calc(100% - 22px) 0, 100% 22px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 22px 100%, 0 calc(100% - 22px))',
+};
+
+const IMAGE_WELL_STYLE: CSSProperties = {
+  inset: '12px',
+  boxShadow:
+    'inset 0 0 0 1px rgba(0,240,255,0.25), inset 0 0 0 2px rgba(0,0,0,0.8), inset 0 0 30px rgba(0,0,0,0.9)',
+  clipPath:
+    'polygon(0 8px, 8px 0, calc(100% - 18px) 0, 100% 18px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 18px 100%, 0 calc(100% - 18px))',
+};
+
+const COLOR_GRADE_STYLE: CSSProperties = {
+  background:
+    'linear-gradient(180deg, rgba(5,5,7,0.15) 0%, transparent 22%, transparent 62%, rgba(5,5,7,0.72) 100%), repeating-linear-gradient(115deg, transparent 0px, transparent 5px, rgba(0,240,255,0.04) 5px, rgba(0,240,255,0.04) 6px)',
+  mixBlendMode: 'screen',
+};
+
+const TOP_LABEL_STYLE: CSSProperties = { top: '14px', fontSize: '7px', letterSpacing: '0.18em' };
+const BOTTOM_LABEL_STYLE: CSSProperties = { bottom: '14px', fontSize: '7px', letterSpacing: '0.18em' };
+
+const LEFT_SIDE_STYLE: CSSProperties = {
+  left: '5px', top: '50%',
+  transform: 'translateY(-50%) rotate(-90deg)',
+  transformOrigin: 'left center',
+  fontSize: '6px', letterSpacing: '0.3em',
+  color: 'rgba(255,230,0,0.55)', whiteSpace: 'nowrap',
+};
+
+const RIGHT_SIDE_STYLE: CSSProperties = {
+  right: '5px', top: '50%',
+  transform: 'translateY(-50%) rotate(90deg)',
+  transformOrigin: 'right center',
+  fontSize: '6px', letterSpacing: '0.3em',
+  color: 'rgba(0,240,255,0.55)', whiteSpace: 'nowrap',
+};
+
+const TOP_STRIPE_STYLE: CSSProperties = {
+  left: '24px', right: '24px', top: '4px', height: '2px',
+  background: 'repeating-linear-gradient(45deg, rgba(255,230,0,0.6) 0px, rgba(255,230,0,0.6) 3px, transparent 3px, transparent 6px)',
+};
+
+const BOTTOM_STRIPE_STYLE: CSSProperties = {
+  left: '24px', right: '24px', bottom: '4px', height: '3px',
+  background: 'repeating-linear-gradient(45deg, #ffe600 0px, #ffe600 4px, #0a0b0d 4px, #0a0b0d 8px)',
+  opacity: 0.7,
+};
+
+const META_TEXT_STYLE: CSSProperties = { color: '#FFE86A', textShadow: '0 0 5px rgba(255,230,0,.35)' };
+
+const FINAL_LAYOUT_STYLE: CSSProperties = { transform: 'translateY(-70px)', pointerEvents: 'auto' };
+const SIDE_LAYOUT_STYLE: CSSProperties = { pointerEvents: 'auto' };
+
+const TEXT_OPACITY_INIT: CSSProperties = { opacity: 0, willChange: 'transform, opacity' };
+const LED_OPACITY_INIT: CSSProperties = { opacity: 0, willChange: 'opacity' };
+
+/* ═══════════════════════════════════════════════════════════════════
    HELPERS
    ═══════════════════════════════════════════════════════════════════ */
 
@@ -136,34 +229,17 @@ interface SceneRefs {
   text: (slot: number, el: HTMLElement | null) => void;
 }
 
-function CrewScene({ member, index, refs }: { member: CrewMember; index: number; refs: SceneRefs }) {
+const CrewScene = memo(function CrewScene({ member, index, refs }: { member: CrewMember; index: number; refs: SceneRefs }) {
   const isFinal = member.side === 'center';
   const isLeft = member.side === 'left';
-  const sceneRootRef = useRef<HTMLDivElement | null>(null);
 
   const sceneStyle: CSSProperties = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    transformStyle: 'preserve-3d',
-transform: `translateZ(${-START_Z - index * SPACING}px)`,
-    opacity: 0,
-    pointerEvents: 'none',
-    willChange: 'transform, opacity',
+    ...SCENE_BASE_STYLE,
+    transform: `translateZ(${-START_Z - index * SPACING}px)`,
   };
 
   const portrait = (
-    <div
-      className="crew-card"
-      style={{
-        width: '100%',
-        aspectRatio: '3 / 4',
-        position: 'relative',
-        flexShrink: 0,
-      }}
-    >
+    <div className="crew-card" style={CREW_CARD_STYLE}>
       <CyberFrame member={member} index={index} />
     </div>
   );
@@ -182,12 +258,12 @@ transform: `translateZ(${-START_Z - index * SPACING}px)`,
         <span
           ref={(el) => refs.text(4, el)}
           className="crew-file-led"
-          style={{ opacity: 0, willChange: 'opacity' }}
+          style={LED_OPACITY_INIT}
         />
         <p
           ref={(el) => refs.text(0, el)}
           className="font-mono text-[13px] md:text-[14px] font-semibold tracking-[0.42em] text-cyan-300"
-          style={{ opacity: 0, willChange: 'transform, opacity' }}
+          style={TEXT_OPACITY_INIT}
         >
           {member.file}
         </p>
@@ -195,45 +271,30 @@ transform: `translateZ(${-START_Z - index * SPACING}px)`,
       <p
         ref={(el) => refs.text(1, el)}
         className="crew-codename mt-5 font-mono text-[16px] font-semibold uppercase tracking-[0.22em]"
-        style={{ opacity: 0, willChange: 'transform, opacity' }}
+        style={TEXT_OPACITY_INIT}
       >
         {member.codename}
       </p>
       <div
-  ref={(el) => refs.text(3, el)}
-  className={`mt-3 flex flex-col ${align}`}
-  style={{ opacity: 0, willChange: 'transform, opacity' }}
->
-  <span
-    className="font-mono text-[11px] tracking-[0.25em]"
-    style={{
-      color: '#FFE86A',
-      textShadow: '0 0 5px rgba(255,230,0,.35)',
-    }}
-  >
-    {member.meta[0]}
-  </span>
-
-  <span
-    className="crew-cursor mt-1 font-mono text-[11px] tracking-[0.25em]"
-    style={{
-      color: '#FFE86A',
-      textShadow: '0 0 5px rgba(255,230,0,.35)',
-    }}
-  >
-    {member.meta[1]}
-  </span>
-
-  <div className="crew-divider mt-4 w-32" />
-</div>
+        ref={(el) => refs.text(3, el)}
+        className={`mt-3 flex flex-col ${align}`}
+        style={TEXT_OPACITY_INIT}
+      >
+        <span className="font-mono text-[11px] tracking-[0.25em]" style={META_TEXT_STYLE}>
+          {member.meta[0]}
+        </span>
+        <span className="crew-cursor mt-1 font-mono text-[11px] tracking-[0.25em]" style={META_TEXT_STYLE}>
+          {member.meta[1]}
+        </span>
+        <div className="crew-divider mt-4 w-32" />
+      </div>
       <h3
         ref={(el) => refs.text(2, el)}
         data-final-name={member.name}
         className={`crew-name mt-4 font-display font-black leading-[0.92] tracking-tight ${
           isFinal ? 'text-[clamp(3.2rem,9vw,6.5rem)]' : 'text-[clamp(2.6rem,6.5vw,5rem)]'
-        }`
-      }
-        style={{ opacity: 0, willChange: 'transform, opacity' }}
+        }`}
+        style={TEXT_OPACITY_INIT}
       >
         {member.name}
       </h3>
@@ -241,11 +302,11 @@ transform: `translateZ(${-START_Z - index * SPACING}px)`,
   );
 
   return (
-    <div ref={(el) => { sceneRootRef.current = el; refs.scene(el); }} data-crew-scene style={sceneStyle}>
+    <div className="crew-scene" ref={(el) => refs.scene(el)} data-crew-scene style={sceneStyle}>
       {isFinal ? (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center gap-6 px-6 md:gap-12"
-          style={{ transform: 'translateY(-70px)', pointerEvents: 'auto' }}
+          style={FINAL_LAYOUT_STYLE}
         >
           <div style={{ width: 'min(560px,54vw)' }}>{portrait}</div>
           {textBlock}
@@ -253,7 +314,7 @@ transform: `translateZ(${-START_Z - index * SPACING}px)`,
       ) : (
         <div
           className="absolute inset-0 flex items-center justify-center px-6"
-          style={{ pointerEvents: 'auto' }}
+          style={SIDE_LAYOUT_STYLE}
         >
           <div
             className="flex items-center gap-6 md:gap-12"
@@ -273,7 +334,7 @@ transform: `translateZ(${-START_Z - index * SPACING}px)`,
       </span>
     </div>
   );
-}
+});
 
 /* ═══════════════════════════════════════════════════════════════════
    SCROLL ANIMATION ENGINE
@@ -454,6 +515,7 @@ export default function CrewDatabase() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const sceneRefs = useRef<(HTMLDivElement | null)[]>([]);
   const textRefs = useRef<(HTMLElement | null)[][]>([]);
+  const refsPool = useRef<SceneRefs[]>([]);
 
   useCrewEngine(sectionRef, sceneRefs, textRefs);
   useCrewBoot(sectionRef);
@@ -497,21 +559,26 @@ export default function CrewDatabase() {
               zIndex: 1,
             }}
           >
-            {CREW.map((m, i) => (
-              <CrewScene
-                key={m.name}
-                member={m}
-                index={i}
-                refs={{
-                  scene: (el) => { sceneRefs.current[i] = el; },
-                  text: (slot, el) => {
+            {CREW.map((m, i) => {
+              if (!refsPool.current[i]) {
+                refsPool.current[i] = {
+                  scene: (el: HTMLDivElement | null) => { sceneRefs.current[i] = el; },
+                  text: (slot: number, el: HTMLElement | null) => {
                     const row = textRefs.current[i] ?? [null, null, null, null, null];
                     row[slot] = el;
                     textRefs.current[i] = row;
                   },
-                }}
-              />
-            ))}
+                };
+              }
+              return (
+                <CrewScene
+                  key={m.name}
+                  member={m}
+                  index={i}
+                  refs={refsPool.current[i]}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
@@ -540,7 +607,11 @@ export default function CrewDatabase() {
 function CrewFXStyles() {
   return (
     <style>{`
-/* ── The only two infinite animations kept ── */
+/* ── Scene visibility — inactive scenes skip paint + free GPU layers ── */
+.crew-scene { will-change: transform, opacity; }
+.crew-scene-inactive { will-change: auto; visibility: hidden; }
+
+/* ── The only infinite animations kept ── */
 @keyframes crewLedPulse {
   0%,100% { opacity: 0.4; box-shadow: 0 0 3px currentColor; }
   50% { opacity: 1; box-shadow: 0 0 6px currentColor; }
@@ -558,8 +629,56 @@ function CrewFXStyles() {
   50%, 100% { opacity: 0; }
 }
 
-/* ── Static decorative layers (no animation) ── */
-.crew-scanlines { position:absolute; inset:0; background: repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0,0,0,0.32) 2px, rgba(0,0,0,0.32) 3px); opacity:0.22; mix-blend-mode:multiply; pointer-events:none; }
+/* ── Scanlines moved to pseudo-element on the image well (saves 7 divs) ── */
+.crew-card-well::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0,0,0,0.32) 2px, rgba(0,0,0,0.32) 3px);
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* ── Bolt — screw slot moved to pseudo-element (saves 7 inner divs) ── */
+.crew-bolt {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 35%, #5a5e66, #15171b 70%, #050608);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9);
+}
+.crew-bolt::after {
+  content: '';
+  width: 3px;
+  height: 1px;
+  background: rgba(0,0,0,0.85);
+  transform: rotate(45deg);
+}
+
+/* ── Corner brackets — single element with 4 corner gradients (saves 21 divs) ── */
+.crew-brackets {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  filter: drop-shadow(0 0 6px rgba(0,240,255,0.7));
+  background:
+    linear-gradient(#00f0ff, #00f0ff) 8px 8px / 2px 16px no-repeat,
+    linear-gradient(#00f0ff, #00f0ff) 8px 8px / 16px 2px no-repeat,
+    linear-gradient(#00f0ff, #00f0ff) right 8px top 8px / 2px 16px no-repeat,
+    linear-gradient(#00f0ff, #00f0ff) right 8px top 8px / 16px 2px no-repeat,
+    linear-gradient(#00f0ff, #00f0ff) 8px bottom 8px / 2px 16px no-repeat,
+    linear-gradient(#00f0ff, #00f0ff) 8px bottom 8px / 16px 2px no-repeat,
+    linear-gradient(#00f0ff, #00f0ff) right 8px bottom 8px / 2px 16px no-repeat,
+    linear-gradient(#00f0ff, #00f0ff) right 8px bottom 8px / 16px 2px no-repeat;
+}
+
+/* ── Holographic edge glow ── */
 .crew-holo { position:absolute; inset:0; border:1px solid rgba(0,240,255,0.28); animation: crewHoloGlow 5s ease-in-out infinite; pointer-events:none; }
 
 /* ── Animations — paused on inactive scenes, running only on active ── */
@@ -665,47 +784,24 @@ function useCyberGlitch(imgRef: React.RefObject<HTMLImageElement | null>) {
   }, [imgRef]);
 }
 
-function CyberFrame({ member, index }: { member: CrewMember; index: number }) {
+const CyberFrame = memo(function CyberFrame({ member, index }: { member: CrewMember; index: number }) {
   const imgRef = useRef<HTMLImageElement | null>(null);
   useCyberGlitch(imgRef);
-  const d = (n: number) => `${(index * 0.7 + n).toFixed(2)}s`;
+
+  // Precomputed animation delays — avoids creating a closure every render.
+  const d0 = `${(index * 0.7).toFixed(2)}s`;
+  const d01 = `${(index * 0.7 + 0.1).toFixed(2)}s`;
+  const d05 = `${(index * 0.7 + 0.5).toFixed(2)}s`;
+  const d09 = `${(index * 0.7 + 0.9).toFixed(2)}s`;
+
   return (
     <div className="relative h-full w-full">
       {/* Thick dark metallic outer shell with bevel */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'linear-gradient(145deg, #23262b 0%, #0a0b0d 38%, #15171b 62%, #050608 100%)',
-          boxShadow:
-            'inset 0 0 0 1px rgba(0,240,255,0.18), inset 0 0 0 2px rgba(0,0,0,0.7), inset 0 2px 6px rgba(255,255,255,0.06), inset 0 -3px 10px rgba(0,0,0,0.9), 0 0 0 1px #000, 0 22px 50px rgba(0,0,0,0.85), 0 0 40px rgba(0,240,255,0.12)',
-          clipPath:
-            'polygon(0 14px, 14px 0, calc(100% - 28px) 0, 100% 28px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 28px 100%, 0 calc(100% - 28px))',
-        }}
-      >
+      <div className="absolute inset-0" style={OUTER_SHELL_STYLE}>
         {/* Inner layered border — metallic mid plate */}
-        <div
-          className="absolute"
-          style={{
-            inset: '8px',
-            background: 'linear-gradient(150deg, #14161a, #070809)',
-            boxShadow:
-              'inset 0 0 0 1px rgba(255,255,255,0.05), inset 0 0 0 2px rgba(0,0,0,0.6), inset 0 0 22px rgba(0,0,0,0.85)',
-            clipPath:
-              'polygon(0 10px, 10px 0, calc(100% - 22px) 0, 100% 22px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 22px 100%, 0 calc(100% - 22px))',
-          }}
-        >
-          {/* Image well */}
-          <div
-            className="crew-card-well absolute overflow-hidden"
-            style={{
-              inset: '12px',
-              boxShadow:
-                'inset 0 0 0 1px rgba(0,240,255,0.25), inset 0 0 0 2px rgba(0,0,0,0.8), inset 0 0 30px rgba(0,0,0,0.9)',
-              clipPath:
-                'polygon(0 8px, 8px 0, calc(100% - 18px) 0, 100% 18px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 18px 100%, 0 calc(100% - 18px))',
-            }}
-          >
+        <div className="absolute" style={MID_PLATE_STYLE}>
+          {/* Image well — scanlines now via ::after pseudo-element */}
+          <div className="crew-card-well absolute overflow-hidden" style={IMAGE_WELL_STYLE}>
             <img
               ref={imgRef}
               src={member.img}
@@ -714,197 +810,47 @@ function CyberFrame({ member, index }: { member: CrewMember; index: number }) {
               loading="lazy"
             />
             {/* Color grade + diagonal holographic sheen (merged static overlay) */}
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(180deg, rgba(5,5,7,0.15) 0%, transparent 22%, transparent 62%, rgba(5,5,7,0.72) 100%), repeating-linear-gradient(115deg, transparent 0px, transparent 5px, rgba(0,240,255,0.04) 5px, rgba(0,240,255,0.04) 6px)',
-                mixBlendMode: 'screen',
-              }}
-            />
-            {/* CRT scanlines (static) */}
-            <div className="crew-scanlines" />
+            <div className="pointer-events-none absolute inset-0" style={COLOR_GRADE_STYLE} />
           </div>
 
-          {/* Cyan glowing corner brackets */}
-          <CornerBracket position="top-left" />
-          <CornerBracket position="top-right" />
-          <CornerBracket position="bottom-left" />
-          <CornerBracket position="bottom-right" />
+          {/* Cyan glowing corner brackets — single element with 4 corner gradients */}
+          <div className="crew-brackets" />
 
           {/* Top scan label bar */}
-          <div
-            className="absolute left-3 right-3 flex items-center justify-between font-mono"
-            style={{ top: '14px', fontSize: '7px', letterSpacing: '0.18em' }}
-          >
+          <div className="absolute left-3 right-3 flex items-center justify-between font-mono" style={TOP_LABEL_STYLE}>
             <span style={{ color: 'rgba(0,240,255,0.85)' }}>FILE VERIFIED</span>
             <span style={{ color: 'rgba(255,230,0,0.85)' }}>NC-2077</span>
           </div>
 
           {/* Bottom scan label bar */}
-          <div
-            className="absolute left-3 right-3 flex items-center justify-between font-mono"
-            style={{ bottom: '14px', fontSize: '7px', letterSpacing: '0.18em' }}
-          >
+          <div className="absolute left-3 right-3 flex items-center justify-between font-mono" style={BOTTOM_LABEL_STYLE}>
             <span style={{ color: 'rgba(255,230,0,0.85)' }}>CREW DATA</span>
             <span style={{ color: 'rgba(0,240,255,0.7)' }}>{member.file}</span>
           </div>
 
           {/* Side micro text */}
-          <div
-            className="absolute font-mono"
-            style={{
-              left: '5px',
-              top: '50%',
-              transform: 'translateY(-50%) rotate(-90deg)',
-              transformOrigin: 'left center',
-              fontSize: '6px',
-              letterSpacing: '0.3em',
-              color: 'rgba(255,230,0,0.55)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            NET-77//CHROME-2.1
-          </div>
-          <div
-            className="absolute font-mono"
-            style={{
-              right: '5px',
-              top: '50%',
-              transform: 'translateY(-50%) rotate(90deg)',
-              transformOrigin: 'right center',
-              fontSize: '6px',
-              letterSpacing: '0.3em',
-              color: 'rgba(0,240,255,0.55)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            ID:{member.file.replace(/\s/g, '')}
-          </div>
+          <div className="absolute font-mono" style={LEFT_SIDE_STYLE}>NET-77//CHROME-2.1</div>
+          <div className="absolute font-mono" style={RIGHT_SIDE_STYLE}>ID:{member.file.replace(/\s/g, '')}</div>
 
-          {/* Bolts / screws */}
-          <Bolt style={{ top: '10px', left: '10px' }} />
-          <Bolt style={{ top: '10px', right: '10px' }} />
-          <Bolt style={{ bottom: '10px', left: '10px' }} />
-          <Bolt style={{ bottom: '10px', right: '10px' }} />
+          {/* Bolts / screws — inner slot via ::after pseudo-element */}
+          <div className="crew-bolt" style={{ top: '10px', left: '10px' }} />
+          <div className="crew-bolt" style={{ top: '10px', right: '10px' }} />
+          <div className="crew-bolt" style={{ bottom: '10px', left: '10px' }} />
+          <div className="crew-bolt" style={{ bottom: '10px', right: '10px' }} />
 
           {/* Indicator LEDs (only animated elements kept) */}
-          <div
-            className="crew-led absolute"
-            style={{
-              top: '26px',
-              left: '14px',
-              width: '5px',
-              height: '5px',
-              borderRadius: '9999px',
-              color: '#00f0ff',
-              background: '#00f0ff',
-              animationDelay: d(0.1),
-            }}
-          />
-          <div
-            className="crew-led absolute"
-            style={{
-              top: '26px',
-              right: '14px',
-              width: '5px',
-              height: '5px',
-              borderRadius: '9999px',
-              color: '#ffe600',
-              background: '#ffe600',
-              animationDelay: d(0.5),
-            }}
-          />
-          <div
-            className="crew-led absolute"
-            style={{
-              bottom: '26px',
-              left: '14px',
-              width: '5px',
-              height: '5px',
-              borderRadius: '9999px',
-              color: '#ff2d2d',
-              background: '#ff2d2d',
-              animationDelay: d(0.9),
-            }}
-          />
+          <div className="crew-led absolute" style={{ top: '26px', left: '14px', width: '5px', height: '5px', borderRadius: '9999px', color: '#00f0ff', background: '#00f0ff', animationDelay: d01 }} />
+          <div className="crew-led absolute" style={{ top: '26px', right: '14px', width: '5px', height: '5px', borderRadius: '9999px', color: '#ffe600', background: '#ffe600', animationDelay: d05 }} />
+          <div className="crew-led absolute" style={{ bottom: '26px', left: '14px', width: '5px', height: '5px', borderRadius: '9999px', color: '#ff2d2d', background: '#ff2d2d', animationDelay: d09 }} />
 
           {/* Yellow industrial warning stripes — top + bottom edges (merged static) */}
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              left: '24px',
-              right: '24px',
-              top: '4px',
-              height: '2px',
-              background:
-                'repeating-linear-gradient(45deg, rgba(255,230,0,0.6) 0px, rgba(255,230,0,0.6) 3px, transparent 3px, transparent 6px)',
-            }}
-          />
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              left: '24px',
-              right: '24px',
-              bottom: '4px',
-              height: '3px',
-              background:
-                'repeating-linear-gradient(45deg, #ffe600 0px, #ffe600 4px, #0a0b0d 4px, #0a0b0d 8px)',
-              opacity: 0.7,
-            }}
-          />
+          <div className="pointer-events-none absolute" style={TOP_STRIPE_STYLE} />
+          <div className="pointer-events-none absolute" style={BOTTOM_STRIPE_STYLE} />
 
           {/* Holographic edge glow (subtle pulse — only animation kept besides LEDs) */}
-          <div className="crew-holo" style={{ animationDelay: d(0) }} />
+          <div className="crew-holo" style={{ animationDelay: d0 }} />
         </div>
       </div>
     </div>
   );
-}
-
-function CornerBracket({ position }: { position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' }) {
-  const base = 'absolute h-4 w-4';
-  const map: Record<string, string> = {
-    'top-left': 'left-2 top-2',
-    'top-right': 'right-2 top-2',
-    'bottom-left': 'left-2 bottom-2',
-    'bottom-right': 'right-2 bottom-2',
-  };
-  const borderMap: Record<string, string> = {
-    'top-left': 'border-l-2 border-t-2',
-    'top-right': 'border-r-2 border-t-2',
-    'bottom-left': 'border-l-2 border-b-2',
-    'bottom-right': 'border-r-2 border-b-2',
-  };
-  return (
-    <div
-      className={`${base} ${map[position]} ${borderMap[position]}`}
-      style={{ borderColor: '#00f0ff', boxShadow: '0 0 6px rgba(0,240,255,0.7)' }}
-    />
-  );
-}
-
-function Bolt({ style }: { style: CSSProperties }) {
-  return (
-    <div
-      className="absolute flex items-center justify-center"
-      style={{
-        width: '7px',
-        height: '7px',
-        borderRadius: '9999px',
-        background: 'radial-gradient(circle at 35% 35%, #5a5e66, #15171b 70%, #050608)',
-        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9)',
-        ...style,
-      }}
-    >
-      <div
-        style={{
-          width: '3px',
-          height: '1px',
-          background: 'rgba(0,0,0,0.85)',
-          transform: 'rotate(45deg)',
-        }}
-      />
-    </div>
-  );
-}
+});
