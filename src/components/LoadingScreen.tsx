@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const BG_IMAGE =
-  'https://ik.imagekit.io/zznoau6lx/ki34g7cl98ca1.jpg?updatedAt=1785127229671';
+  'https://ik.imagekit.io/zznoau6lx/Cybercoin%20webp/loadingBackground.webp';
 const SOUND_URL = 'https://ik.imagekit.io/zznoau6lx/loading.mp3';
 
 const MESSAGES = [
