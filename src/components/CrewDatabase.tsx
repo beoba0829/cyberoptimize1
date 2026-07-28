@@ -241,7 +241,7 @@ transform: `translateZ(${-START_Z - index * SPACING}px)`,
   );
 
   return (
-    <div ref={(el) => { sceneRootRef.current = el; refs.scene(el); }} style={sceneStyle}>
+    <div ref={(el) => { sceneRootRef.current = el; refs.scene(el); }} data-crew-scene style={sceneStyle}>
       {isFinal ? (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center gap-6 px-6 md:gap-12"
@@ -391,6 +391,16 @@ function useCrewEngine(
       const lo = Math.max(0, current - 1);
       const hi = Math.min(COUNT - 1, current + 1);
 
+      // Mark inactive scenes so CSS animations and glitch timers freeze.
+      for (let i = 0; i < scenes.length; i++) {
+        const scene = scenes[i];
+        if (!scene) continue;
+        const shouldBeActive = i >= lo && i <= hi;
+        const isActive = !scene.classList.contains('crew-scene-inactive');
+        if (shouldBeActive && !isActive) scene.classList.remove('crew-scene-inactive');
+        if (!shouldBeActive && isActive) scene.classList.add('crew-scene-inactive');
+      }
+
       for (let i = lo; i <= hi; i++) {
         const scene = scenes[i];
         if (!scene) continue;
@@ -525,69 +535,49 @@ export default function CrewDatabase() {
    Keeps the image at exactly the same size/position; only adds the shell.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* Injected once. All effects animate only transform / opacity / box-shadow.
-   No layout properties, no heavy filters — keeps 60 FPS. */
+/* Injected once. Only LED pulse + subtle holo border pulse animate.
+   All other effects are static — premium frame without GPU cost. */
 function CrewFXStyles() {
   return (
     <style>{`
-@keyframes crewFlicker {
-  0%,100% { opacity: 1; }
-  92.5% { opacity: 1; }
-  93.5% { opacity: 0.96; }
-  95% { opacity: 1; }
-  97% { opacity: 0.97; }
-  98.5% { opacity: 1; }
-}
-@keyframes crewGlassSweep {
-  0% { transform: translateX(-160%) skewX(-18deg); opacity: 0; }
-  14% { opacity: 0.5; }
-  86% { opacity: 0.35; }
-  100% { transform: translateX(260%) skewX(-18deg); opacity: 0; }
-}
-@keyframes crewScanBar {
-  0% { transform: translateY(-30px); opacity: 0; }
-  6% { opacity: 0.75; }
-  94% { opacity: 0.75; }
-  100% { transform: translateY(900px); opacity: 0; }
+/* ── The only two infinite animations kept ── */
+@keyframes crewLedPulse {
+  0%,100% { opacity: 0.4; box-shadow: 0 0 3px currentColor; }
+  50% { opacity: 1; box-shadow: 0 0 6px currentColor; }
 }
 @keyframes crewHoloGlow {
-  0%,100% { box-shadow: 0 0 16px rgba(0,240,255,0.22), inset 0 0 16px rgba(0,240,255,0.12); }
-  50% { box-shadow: 0 0 28px rgba(0,240,255,0.42), inset 0 0 24px rgba(0,240,255,0.22); }
+  0%,100% { box-shadow: 0 0 14px rgba(0,240,255,0.18), inset 0 0 14px rgba(0,240,255,0.08); }
+  50% { box-shadow: 0 0 22px rgba(0,240,255,0.3), inset 0 0 18px rgba(0,240,255,0.14); }
 }
-@keyframes crewBloom {
-  0%,100% { opacity: 0.25; }
-  50% { opacity: 0.55; }
-}
-@keyframes crewLedPulse {
-  0%,100% { opacity: 0.35; box-shadow: 0 0 3px currentColor; }
-  50% { opacity: 1; box-shadow: 0 0 7px currentColor, 0 0 13px currentColor; }
-}
-.crew-flicker { animation: crewFlicker 4.2s steps(1) infinite; }
-.crew-scanlines { position:absolute; inset:0; background: repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0,0,0,0.32) 2px, rgba(0,0,0,0.32) 3px); opacity:0.22; mix-blend-mode:multiply; pointer-events:none; }
-.crew-glass { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
-.crew-glass-bar { position:absolute; top:0; left:0; width:42%; height:100%; background:linear-gradient(115deg, transparent, rgba(255,255,255,0.16), transparent); animation: crewGlassSweep 7s ease-in-out infinite; }
-.crew-scanbar { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
-.crew-scanbar-line { position:absolute; left:0; right:0; height:12px; top:0; background:linear-gradient(180deg, transparent, rgba(0,240,255,0.4), transparent); box-shadow:0 0 14px rgba(0,240,255,0.45); animation: crewScanBar 5.5s linear infinite; }
-.crew-ca-red { position:absolute; inset:0; box-shadow: inset 2px 0 0 rgba(255,0,60,0.35), inset -2px 0 0 rgba(255,0,60,0.22); mix-blend-mode:screen; opacity:0.5; pointer-events:none; }
-.crew-ca-cyan { position:absolute; inset:0; box-shadow: inset -2px 0 0 rgba(0,240,255,0.35), inset 2px 0 0 rgba(0,240,255,0.22); mix-blend-mode:screen; opacity:0.5; pointer-events:none; }
-.crew-bloom { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(0,240,255,0.12), transparent 70%); animation: crewBloom 5s ease-in-out infinite; pointer-events:none; mix-blend-mode:screen; }
-.crew-holo { position:absolute; inset:0; border:1px solid rgba(0,240,255,0.28); animation: crewHoloGlow 4s ease-in-out infinite; pointer-events:none; }
-.crew-led { animation: crewLedPulse 2s ease-in-out infinite; }
-
-/* ── Personnel-database text panel ── */
 @keyframes crewFileLed {
   0%,100% { box-shadow: 0 0 2px rgba(0,240,255,0.4); }
-  50% { box-shadow: 0 0 5px rgba(0,240,255,0.8), 0 0 10px rgba(0,240,255,0.4); }
+  50% { box-shadow: 0 0 5px rgba(0,240,255,0.8); }
 }
+@keyframes crewCursorBlink {
+  0%, 48% { opacity: 0.85; }
+  50%, 100% { opacity: 0; }
+}
+
+/* ── Static decorative layers (no animation) ── */
+.crew-scanlines { position:absolute; inset:0; background: repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0,0,0,0.32) 2px, rgba(0,0,0,0.32) 3px); opacity:0.22; mix-blend-mode:multiply; pointer-events:none; }
+.crew-holo { position:absolute; inset:0; border:1px solid rgba(0,240,255,0.28); animation: crewHoloGlow 5s ease-in-out infinite; pointer-events:none; }
+
+/* ── Animations — paused on inactive scenes, running only on active ── */
+.crew-led { animation: crewLedPulse 2s ease-in-out infinite; }
 .crew-file-led {
   width: 5px; height: 5px; border-radius: 9999px;
   background: #00f0ff;
   animation: crewFileLed 2.6s ease-in-out infinite;
 }
-@keyframes crewHoloShimmer {
-  0% { background-position: 220% 0; }
-  100% { background-position: -120% 0; }
+
+/* When a scene is not active, freeze all animations to save GPU. */
+.crew-scene-inactive .crew-led,
+.crew-scene-inactive .crew-holo,
+.crew-scene-inactive .crew-file-led {
+  animation-play-state: paused;
 }
+
+/* ── Static text gradients (shimmer/flow animations removed) ── */
 .crew-codename {
   background: linear-gradient(100deg,
     rgba(0,240,255,0.45) 0%,
@@ -596,72 +586,51 @@ function CrewFXStyles() {
     rgba(0,240,255,0.95) 58%,
     rgba(0,240,255,0.45) 100%);
   background-size: 250% 100%;
+  background-position: 50% 0;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
   filter: drop-shadow(0 0 5px rgba(0,240,255,0.45));
-  animation: crewHoloShimmer 7s linear infinite;
-}
-@keyframes crewNameFlow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 300% 50%; }
 }
 .crew-name {
   background: linear-gradient(90deg,
     #00f0ff 0%, #4d7fff 12%, #b14dff 24%, #ff2ec4 36%,
     #ff4d8d 48%, #ffe600 60%, #ffffff 72%, #4d7fff 84%, #00f0ff 100%);
   background-size: 300% 100%;
+  background-position: 0% 50%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
   filter: drop-shadow(0 0 8px rgba(0,240,255,0.28));
-  animation: crewNameFlow 16s linear infinite;
   transition: filter 0.35s ease-out;
   position: relative;
 }
+
+/* ── Static divider (sweep animation removed) ── */
 .crew-divider {
   position: relative;
   height: 1px;
   overflow: hidden;
   opacity: 0.6;
-}
-.crew-divider::before {
-  content: '';
-  position: absolute; inset: 0;
   background: linear-gradient(90deg, transparent, rgba(0,240,255,0.45), transparent);
 }
-.crew-divider::after {
-  content: '';
-  position: absolute; top: 0; left: 0;
-  height: 100%; width: 38%;
-  background: linear-gradient(90deg, transparent, rgba(0,240,255,0.95), transparent);
-  box-shadow: 0 0 8px rgba(0,240,255,0.6);
-  animation: crewDividerSweep 4.8s ease-in-out infinite;
-}
-@keyframes crewDividerSweep {
-  0% { transform: translateX(-110%); opacity: 0; }
-  18% { opacity: 1; }
-  82% { opacity: 1; }
-  100% { transform: translateX(280%); opacity: 0; }
-}
-@keyframes crewCursorBlink {
-  0%, 48% { opacity: 0.85; }
-  50%, 100% { opacity: 0; }
-}
+
 .crew-cursor::after {
   content: '▌';
   margin-left: 5px;
   color: rgba(0,240,255,0.7);
   animation: crewCursorBlink 1.3s steps(1) infinite;
 }
+.crew-scene-inactive .crew-cursor::after { animation-play-state: paused; }
     `}</style>
   );
 }
 
 /* Random micro-glitch + brief RGB split on the portrait image only.
-   Fires every 6–12s, lasts 100–150ms. No React re-renders, no layout. */
+   Fires every 6–12s, lasts 100–150ms. Only runs while the scene is active
+   (no crew-scene-inactive class on an ancestor). No React re-renders, no layout. */
 function useCyberGlitch(imgRef: React.RefObject<HTMLImageElement | null>) {
   useEffect(() => {
     const img = imgRef.current;
@@ -670,6 +639,12 @@ function useCyberGlitch(imgRef: React.RefObject<HTMLImageElement | null>) {
     let to: ReturnType<typeof setTimeout>;
     const fire = () => {
       if (killed) return;
+      // Skip glitch entirely if the scene is not in the active window.
+      const scene = img.closest('[data-crew-scene]');
+      if (scene && scene.classList.contains('crew-scene-inactive')) {
+        to = setTimeout(fire, 4000);
+        return;
+      }
       const dur = 0.1 + Math.random() * 0.05; // 100–150ms
       const tx = (Math.random() - 0.5) * 5;
       const tl = gsap.timeline({ onComplete: () => gsap.set(img, { filter: 'none', x: 0 }) });
@@ -735,70 +710,21 @@ function CyberFrame({ member, index }: { member: CrewMember; index: number }) {
               ref={imgRef}
               src={member.img}
               alt={member.name}
-              className="crew-flicker h-full w-full object-cover object-top"
+              className="h-full w-full object-cover object-top"
               loading="lazy"
-              style={{ animationDelay: d(1.3) }}
             />
-            {/* Color grade */}
+            {/* Color grade + diagonal holographic sheen (merged static overlay) */}
             <div
               className="pointer-events-none absolute inset-0"
               style={{
                 background:
-                  'linear-gradient(180deg, rgba(5,5,7,0.15) 0%, transparent 22%, transparent 62%, rgba(5,5,7,0.72) 100%)',
-              }}
-            />
-            {/* Diagonal holographic sheen */}
-            <div
-              className="pointer-events-none absolute inset-0 opacity-40"
-              style={{
-                background:
-                  'repeating-linear-gradient(115deg, transparent 0px, transparent 5px, rgba(0,240,255,0.04) 5px, rgba(0,240,255,0.04) 6px)',
+                  'linear-gradient(180deg, rgba(5,5,7,0.15) 0%, transparent 22%, transparent 62%, rgba(5,5,7,0.72) 100%), repeating-linear-gradient(115deg, transparent 0px, transparent 5px, rgba(0,240,255,0.04) 5px, rgba(0,240,255,0.04) 6px)',
                 mixBlendMode: 'screen',
               }}
             />
-            {/* CRT scanlines */}
+            {/* CRT scanlines (static) */}
             <div className="crew-scanlines" />
-            {/* Glass reflection sweep */}
-            <div className="crew-glass">
-              <div className="crew-glass-bar" style={{ animationDelay: d(0.4) }} />
-            </div>
-            {/* Moving scan bar */}
-            <div className="crew-scanbar">
-              <div className="crew-scanbar-line" style={{ animationDelay: d(0.6) }} />
-            </div>
-            {/* Chromatic aberration edges */}
-            <div className="crew-ca-red" />
-            <div className="crew-ca-cyan" />
-            {/* Cyan bloom */}
-            <div className="crew-bloom" style={{ animationDelay: d(0.2) }} />
           </div>
-
-          {/* Thin magenta electronic traces */}
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              left: '4px',
-              top: '4px',
-              right: '4px',
-              bottom: '4px',
-              background:
-                'linear-gradient(90deg, transparent 0%, transparent 14%, rgba(255,0,200,0.5) 14%, rgba(255,0,200,0.5) 15%, transparent 15%, transparent 86%, rgba(255,0,200,0.5) 86%, rgba(255,0,200,0.5) 87%, transparent 87%)',
-              mixBlendMode: 'screen',
-              opacity: 0.6,
-            }}
-          />
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              left: '14%',
-              top: '4px',
-              width: '1px',
-              bottom: '4px',
-              background:
-                'linear-gradient(180deg, transparent, rgba(255,0,200,0.4), transparent)',
-              mixBlendMode: 'screen',
-            }}
-          />
 
           {/* Cyan glowing corner brackets */}
           <CornerBracket position="top-left" />
@@ -862,7 +788,7 @@ function CyberFrame({ member, index }: { member: CrewMember; index: number }) {
           <Bolt style={{ bottom: '10px', left: '10px' }} />
           <Bolt style={{ bottom: '10px', right: '10px' }} />
 
-          {/* Indicator LEDs */}
+          {/* Indicator LEDs (only animated elements kept) */}
           <div
             className="crew-led absolute"
             style={{
@@ -903,7 +829,18 @@ function CyberFrame({ member, index }: { member: CrewMember; index: number }) {
             }}
           />
 
-          {/* Yellow industrial warning stripe — bottom edge */}
+          {/* Yellow industrial warning stripes — top + bottom edges (merged static) */}
+          <div
+            className="pointer-events-none absolute"
+            style={{
+              left: '24px',
+              right: '24px',
+              top: '4px',
+              height: '2px',
+              background:
+                'repeating-linear-gradient(45deg, rgba(255,230,0,0.6) 0px, rgba(255,230,0,0.6) 3px, transparent 3px, transparent 6px)',
+            }}
+          />
           <div
             className="pointer-events-none absolute"
             style={{
@@ -916,20 +853,8 @@ function CyberFrame({ member, index }: { member: CrewMember; index: number }) {
               opacity: 0.7,
             }}
           />
-          {/* Yellow warning stripe — top edge */}
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              left: '24px',
-              right: '24px',
-              top: '4px',
-              height: '2px',
-              background:
-                'repeating-linear-gradient(45deg, rgba(255,230,0,0.6) 0px, rgba(255,230,0,0.6) 3px, transparent 3px, transparent 6px)',
-            }}
-          />
 
-          {/* Holographic edge glow */}
+          {/* Holographic edge glow (subtle pulse — only animation kept besides LEDs) */}
           <div className="crew-holo" style={{ animationDelay: d(0) }} />
         </div>
       </div>
