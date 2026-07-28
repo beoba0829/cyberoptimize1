@@ -25,7 +25,7 @@ const STEPS = [
   { n: '04', title: 'WELCOME TO NIGHT CITY', body: 'You\'re in. HODL, meme, and watch the burn vault eat supply. Don\'t go cyberpsycho.', icon: Terminal },
 ];
 
-const AI_OPERATOR_IMG = 'https://ik.imagekit.io/zznoau6lx/abb8f972-aacb-4ff4-85f0-85b4380afc1f.png';
+const AI_OPERATOR_IMG = 'https://ik.imagekit.io/zznoau6lx/Cybercoin%20webp/abb8f972-aacb-4ff4-85f0-85b4380afc1f.webp';
 
 const NETWORK_LABEL = 'SOLANA';
 const STATUS_LABEL = 'ONLINE';
