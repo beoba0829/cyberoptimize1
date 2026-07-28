@@ -55,7 +55,7 @@ const PHASES: Phase[] = [
     icon: Music,
     colorKey: 'magenta',
     hex: '#FF00A8',
-    image: 'https://ik.imagekit.io/zznoau6lx/c.jpg',
+    image: 'https://ik.imagekit.io/zznoau6lx/Cybercoin%20webp/MV5BODU3NTA3ZWQtNDkyZi00NjM2LWI1NDUtNjBlNGVmZmQ0NGZjXkEyXkFqcGc@._V1_.webp',
     points: [
       'NFT collection: "Ripperdoc Rarities"',
       'Holder-gated Samurai Sessions (audio drops)',
