@@ -66,15 +66,15 @@ export default function HowToBuy() {
         </div>
 
         {/* ── Two-column acquisition console ── */}
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:gap-10">
+        <div className="htb-grid-wrap grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:gap-10">
           {/* ═══ LEFT: AI Mission Operator ═══ */}
-          <div>
+          <div className="min-w-0 w-full">
             <OperatorHologram />
             <OperatorStatus />
           </div>
 
           {/* ═══ RIGHT: Connected terminal ═══ */}
-          <div className="flex flex-col gap-6">
+          <div className="htb-right-col min-w-0 w-full flex flex-col gap-6">
             {/* TARGET CONTRACT */}
             <ContractTerminal
               address={address}
@@ -287,14 +287,14 @@ function ContractTerminal({ address, copyState, onCopy }: { address: string; cop
         {/* CONTRACT ADDRESS */}
         <div className="font-mono text-[9px] tracking-[0.3em] text-gray-500">CONTRACT ADDRESS</div>
         <div className="mt-2 flex items-center gap-3">
-          <code className="ct-addr flex-1 truncate rounded-sm border border-cyber-magenta/30 bg-cyber-darker/80 px-3 py-2.5 font-mono text-sm text-cyber-magenta">
+          <code className="ct-addr min-w-0 flex-1 truncate rounded-sm border border-cyber-magenta/30 bg-cyber-darker/80 px-3 py-2.5 font-mono text-sm text-cyber-magenta">
             <span className="ct-addr-text">{address}</span>
             <span className="ct-cursor" />
           </code>
           <button
             onClick={onCopy}
             disabled={busy}
-            className={`ct-copy clip-cyber-sm flex items-center gap-1.5 border px-3 py-2.5 font-mono text-xs tracking-widest transition-all ${done ? 'is-done' : ''} ${busy ? 'is-busy' : ''}`}
+            className={`ct-copy shrink-0 clip-cyber-sm flex items-center gap-1.5 border px-3 py-2.5 font-mono text-xs tracking-widest transition-all ${done ? 'is-done' : ''} ${busy ? 'is-busy' : ''}`}
             aria-label="Copy contract address"
           >
             <CopyButtonInner state={copyState} />
@@ -426,7 +426,7 @@ function MissionFlow() {
 function MissionModule({ step, index, last }: { step: typeof STEPS[number]; index: number; last: boolean }) {
   const Icon = step.icon;
   return (
-    <div className="mf-module relative flex gap-4">
+    <div className="mf-module relative flex gap-4 min-w-0">
       {/* neural node on the line */}
       <div className="mf-node-wrap relative z-10 shrink-0">
         <div className="mf-node">
@@ -437,7 +437,7 @@ function MissionModule({ step, index, last }: { step: typeof STEPS[number]; inde
       </div>
 
       {/* terminal module body */}
-      <div className="mf-body clip-cyber group relative flex-1 border border-cyber-cyan/25 bg-cyber-panel/55 p-4 backdrop-blur-sm">
+      <div className="mf-body clip-cyber group relative flex-1 min-w-0 border border-cyber-cyan/25 bg-cyber-panel/55 p-4 backdrop-blur-sm">
         <HudCorners hex="#00F0FF" small />
 
         {/* huge glowing step number, watermark */}
@@ -865,6 +865,38 @@ function HowToBuyStyles() {
   .ct-cursor, .ct-spinner, .ct-datastream, .ct-pulse, .an-rgb, .an-outline, .mf-sweep, .mf-holo-pulse {
     animation: none !important;
   }
+}
+
+/* ── Mobile-only refinement (phones, ≤640px) ─────────────────────────
+   Root cause fix: grid children default to min-width:auto, so flex/clip
+   elements inside a grid cell can overflow past the cell boundary and push
+   the whole content block off-center toward the right. The min-w-0 classes
+   added to the grid columns + flex children above fix the overflow at the
+   source. The rules below add a subtle ~9% scale-down so everything fits
+   naturally on small screens. Desktop and tablet (≥641px) are untouched. */
+@media (max-width: 640px) {
+  .htb-grid-wrap {
+    gap: 1.25rem;
+  }
+  /* Slightly scale the entire console down ~9% on phones only. */
+  .htb-right-col,
+  .htb-grid-wrap > div:first-child {
+    transform: scale(0.91);
+    transform-origin: top center;
+  }
+  /* Reclaim the vertical whitespace the scale frees up so spacing stays even. */
+  .htb-grid-wrap > div:first-child {
+    margin-bottom: -2.5rem;
+  }
+  .htb-right-col {
+    margin-top: -1.25rem;
+  }
+  /* Keep the hologram panel centered and within the viewport. */
+  .op-frame { max-width: 100%; }
+  .htb-op-status { max-width: 100%; }
+  /* Ensure the contract address row never overflows: the copy button stays
+     its natural size and the address truncates. */
+  .ct-addr { min-width: 0; }
 }
 `}</style>
   );
