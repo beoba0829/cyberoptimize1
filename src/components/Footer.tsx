@@ -8,7 +8,7 @@ const SOCIALS = [
   { icon: Github, label: 'GITHUB', href: 'https://github.com/' },
 ];
 
-const FOOTER_BG = 'https://ik.imagekit.io/zznoau6lx/6a1517ff337bf3da3718055203b67a40.jpg';
+const FOOTER_BG = 'https://ik.imagekit.io/zznoau6lx/Cybercoin%20webp/6a1517ff337bf3da3718055203b67a40.webp';
 
 export default function Footer() {
   return (
