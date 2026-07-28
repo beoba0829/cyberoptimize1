@@ -469,7 +469,7 @@ export default function CrewDatabase() {
           {/* Background atmosphere — single static background for the entire Crew section */}
           <div className="pointer-events-none absolute inset-0" style={{ zIndex: 0 }}>
             <img
-              src="https://ik.imagekit.io/zznoau6lx/5248762.jpg"
+              src="https://ik.imagekit.io/zznoau6lx/Cybercoin%20webp/5248762.webp"
               alt=""
               className="h-full w-full object-cover"
               loading="lazy"
