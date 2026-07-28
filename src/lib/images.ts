@@ -40,7 +40,6 @@ export const IMAGES = {
     pilar: 'https://ik.imagekit.io/zznoau6lx/cosplaying-as-pilar-v0-og7cwrxlec1e1.webp',
     david: 'https://ik.imagekit.io/zznoau6lx/291ba69a5fb3d4ea78744d1b5196dff5.webp',
     lucy: 'https://ik.imagekit.io/zznoau6lx/will-lucy-appear-cyberpunk-edgerunners-2-v0-q6krc34tz9bf1.webp',
-    smasher: 'https://ik.imagekit.io/zznoau6lx/Adam-Smasher-2077-1024x576.webp',
   },
 
   roadmapBg: px(10591995, 'street-in-city-at-night-after-rain', 1600),
