@@ -26,7 +26,7 @@ const PHASES: Phase[] = [
     icon: Rocket,
     colorKey: 'green',
     hex: '#39FF14',
-    image: 'https://ik.imagekit.io/zznoau6lx/a.JPG',
+    image: 'https://ik.imagekit.io/zznoau6lx/Cybercoin%20webp/a.webp',
     points: [
       'Stealth launch on the streets of Night City',
       'Liquidity locked, contract renounced',
